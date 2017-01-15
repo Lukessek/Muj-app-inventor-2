@@ -23,6 +23,7 @@ import com.google.appinventor.client.explorer.project.ProjectChangeListener;
 import com.google.appinventor.client.output.OdeLog;
 import com.google.appinventor.client.properties.json.ClientJsonParser;
 import com.google.appinventor.common.utils.StringUtils;
+import com.google.appinventor.shared.properties.json.JSONObject;
 import com.google.appinventor.shared.rpc.project.ChecksumedFileException;
 import com.google.appinventor.shared.rpc.project.ChecksumedLoadFile;
 import com.google.appinventor.shared.rpc.project.ProjectNode;
@@ -160,8 +161,7 @@ public final class YaProjectEditor extends ProjectEditor implements ProjectChang
   // because we have to ensure that the component type data is available when the
   // blocks are loaded!
 
-  @Override
-  public void loadProject() {
+  private void loadProject() {
     // add form editors first, then blocks editors because the blocks editors
     // need access to their corresponding form editors to set up properly
     for (ProjectNode source : projectRootNode.getAllSourceNodes()) {
@@ -391,7 +391,7 @@ public final class YaProjectEditor extends ProjectEditor implements ProjectChang
       editorMap.get(formName).formEditor = newFormEditor;
     } else {
       EditorSet editors = new EditorSet();
-      editors.formEditor = newFormEditor;http://www.gwtproject.org/javadoc/latest/com/google/gwt/core/client/Scheduler.html
+      editors.formEditor = newFormEditor;
       editorMap.put(formName, editors);
     }
     newFormEditor.loadFile(new Command() {
@@ -474,10 +474,12 @@ public final class YaProjectEditor extends ProjectEditor implements ProjectChang
           this.onFailure(e);
           return;
         }
+        JSONObject componentJSONObject = new ClientJsonParser().parse(jsonFileContent).asObject();
         COMPONENT_DATABASE.addComponentDatabaseListener(projectEditor);
-        COMPONENT_DATABASE.addComponent(new ClientJsonParser().parse(
-            jsonFileContent).asObject());
-        externalComponents.add(compNode.getName());
+        COMPONENT_DATABASE.addComponent(componentJSONObject);
+        if (!externalComponents.contains(componentJSONObject.get("name").toString())) { // In case of upgrade, we do not need to add entry
+          externalComponents.add(componentJSONObject.get("name").toString());
+        }
         if (afterComponentAdded != null) {
           afterComponentAdded.execute();
         }

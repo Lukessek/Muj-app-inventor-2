@@ -20,6 +20,7 @@ import com.google.appinventor.components.common.YaVersion;
 
 import com.google.common.collect.Maps;
 
+import com.google.gwt.core.client.Callback;
 import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.core.client.JavaScriptObject;
 
@@ -619,6 +620,10 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
     doHardReset(formName);
   }
 
+  public void verifyAllBlocks() {
+    doVerifyAllBlocks(formName);
+  }
+
   public static boolean checkIsAdmin() {
     return Ode.getInstance().getUser().getIsAdmin();
   }
@@ -643,6 +648,10 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
 
   public static void popScreen() {
     DesignToolbar.popScreen();
+  }
+
+  public void getBlocksImage(Callback callback) {
+    doFetchBlocksImage(formName, callback);
   }
 
   // The code below (4 methods worth) is for creating a GWT dialog box
@@ -728,8 +737,8 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
     return YaBlocksEditor.getComponentInfo(typeName);
   }
 
-  public static String getComponentsJSONString() {
-    return YaBlocksEditor.getComponentsJSONString();
+  public static String getComponentsJSONString(String projectId) {
+    return YaBlocksEditor.getComponentsJSONString(Long.parseLong(projectId));
   }
 
   public static String getComponentInstanceTypeName(String formName, String instanceName) {
@@ -813,6 +822,8 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
   @Override
   public void onComponentTypeAdded(List<String> componentTypes) {
     populateComponentTypes(formName);
+    verifyAllBlocks();
+
   }
 
   @Override
@@ -872,7 +883,7 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
     $wnd.BlocklyPanel_getComponentInfo =
         $entry(@com.google.appinventor.client.editor.youngandroid.BlocklyPanel::getComponentInfo(Ljava/lang/String;));
     $wnd.BlocklyPanel_getComponentsJSONString =
-        $entry(@com.google.appinventor.client.editor.youngandroid.BlocklyPanel::getComponentsJSONString());
+        $entry(@com.google.appinventor.client.editor.youngandroid.BlocklyPanel::getComponentsJSONString(Ljava/lang/String;));
     $wnd.BlocklyPanel_getYaVersion =
         $entry(@com.google.appinventor.client.editor.youngandroid.BlocklyPanel::getYaVersion());
     $wnd.BlocklyPanel_getBlocksLanguageVersion =
@@ -945,6 +956,7 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
   // [lyn, 2014/10/27] added formJson for upgrading
   public static native void doLoadBlocksContent(String formName, String formJson, String blocksContent) /*-{
     $wnd.Blocklies[formName].SaveFile.load(formJson, blocksContent);
+    $wnd.Blocklies[formName].Component.verifyAllBlocks();
   }-*/;
 
   public static native String doGetBlocksContent(String formName) /*-{
@@ -1041,6 +1053,25 @@ public class BlocklyPanel extends HTMLPanel implements ComponentDatabaseChangeLi
    * Update Component Types in Blockly ComponentTypes
    */
   public static native void populateComponentTypes(String formName) /*-{
-      $wnd.Blocklies[formName].ComponentTypes.populateTypes();
+      $wnd.Blocklies[formName].ComponentTypes.populateTypes(top.location.hash.substr(1));
   }-*/;
+
+  /*
+   * Update Component Types in Blockly ComponentTypes
+   */
+  public static native void doVerifyAllBlocks(String formName) /*-{
+      $wnd.Blocklies[formName].Component.verifyAllBlocks();
+  }-*/;
+
+  public static native void doFetchBlocksImage(String formName, Callback<String,String> callback) /*-{
+      var callb = $entry(function(result, error) {
+          if (error) {
+             callback.@com.google.gwt.core.client.Callback::onFailure(Ljava/lang/Object;)(error);
+          } else {
+             callback.@com.google.gwt.core.client.Callback::onSuccess(Ljava/lang/Object;)(result);
+          }
+      });
+      $wnd.Blocklies[formName].ExportBlocksImage.getUri(callb);
+  }-*/;
+
 }

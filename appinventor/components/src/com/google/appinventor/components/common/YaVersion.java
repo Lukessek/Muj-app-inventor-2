@@ -392,9 +392,17 @@ public class YaVersion {
   // For YOUNG_ANDROID_VERSION 156:
   // - FIREBASE_COMPONENT_VERSION was incremented to 3
   // For YOUNG_ANDROID_VERSION 157:
+ ai2test
   // - BLUETOOTHLE_COMPONENT_VERSION is 1
 
   public static final int YOUNG_ANDROID_VERSION = 157;
+=======
+  // - LABEL_COMPONENT_VERSION was incremented to 4
+  // For YOUNG_ANDROID_VERSION 158:
+  // Added HorizontalScrollArrangement and VerticalScrollArrangement
+
+  public static final int YOUNG_ANDROID_VERSION = 158;
+  master
 
   // ............................... Blocks Language Version Number ...............................
 
@@ -701,8 +709,11 @@ public class YaVersion {
   // For HORIZONTALARRANGEMENT_COMPONENT_VERSION 2:
   // - The AlignHorizontal property was added
   // - The AlignVertical property was added
+  // For HORIZONTALARRANGEMENT_COMPONENT_VERSION 3:
   // - Added background color & image
   public static final int HORIZONTALARRANGEMENT_COMPONENT_VERSION = 3;
+
+  public static final int HORIZONTALSCROLLARRANGEMENT_COMPONENT_VERSION = 1;
 
   // For IMAGE_COMPONENT_VERSION 2:
   // - The RotationAngle property was added.
@@ -739,7 +750,10 @@ public class YaVersion {
   // - The Alignment property was renamed to TextAlignment.
   // For LABEL_COMPONENT_VERSION 3:
   // - The HasMargins property was added
-  public static final int LABEL_COMPONENT_VERSION = 3;
+  // For LABEL_COMPONENT_VERSION 4:
+  // - The HTML format is defined.
+
+  public static final int LABEL_COMPONENT_VERSION = 4;
 
   // For LISTPICKER_COMPONENT_VERSION 2:
   // - The Alignment property was renamed to TextAlignment.
@@ -985,8 +999,11 @@ public class YaVersion {
   // For VERTICALARRANGEMENT_COMPONENT_VERSION 2:
   // - The AlignHorizontal property was added
   // - The AlignVertical property was added
+  // For VERTICALARRANGEMENT_COMPONENT_VERSION 3:
   // - Added background color & image
   public static final int VERTICALARRANGEMENT_COMPONENT_VERSION = 3;
+
+  public static final int VERTICALSCROLLARRANGEMENT_COMPONENT_VERSION = 1;
 
   // For VIDEOPLAYER_COMPONENT_VERSION 2:
   // - The VideoPlayer.VideoPlayerError event was added.
@@ -1063,10 +1080,10 @@ public class YaVersion {
 
   public static final String ACCEPTABLE_COMPANION_PACKAGE = "edu.mit.appinventor.aicompanion3";
 
-  public static final String PREFERRED_COMPANION = "2.36cdk1";
+  public static final String PREFERRED_COMPANION = "2.39";
   public static final String COMPANION_UPDATE_URL = "";
   public static final String COMPANION_UPDATE_URL1 = "";
-  public static final String [] ACCEPTABLE_COMPANIONS = { "2.36cdk1" };
+  public static final String [] ACCEPTABLE_COMPANIONS = { "2.39" };
 
   // Splash Screen Values
   public static final int SPLASH_SURVEY = 1;

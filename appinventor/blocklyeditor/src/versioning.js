@@ -1437,6 +1437,13 @@ Blockly.Versioning.AllUpgradeMaps =
 
   }, // End HorizontalArrangement upgraders
 
+  "HorizontalScrollArrangement": {
+
+    // This is initial version. Placeholder for future upgrades
+    1: "noUpgrade"
+
+  }, // End HorizontalScrollArrangement upgraders
+
   "Image": {
 
     //This is initial version. Placeholder for future upgrades
@@ -1520,7 +1527,10 @@ Blockly.Versioning.AllUpgradeMaps =
 
     // AI2: For LABEL_COMPONENT_VERSION 3:
     // - The HasMargins property was added
-    3: "noUpgrade"
+    3: "noUpgrade",
+
+    // AI2: Add HTMLFormat property
+    4: "noUpgrade"
 
   }, // End Label upgraders
 
@@ -2269,6 +2279,13 @@ Blockly.Versioning.AllUpgradeMaps =
     3: "noUpgrade"
 
   }, // End VerticalArrangement upgraders
+
+  "VerticalScrollArrangement": {
+
+    //This is initial version. Placeholder for future upgrades
+    1: "noUpgrade"
+
+  }, // End VerticalScrollArrangement upgraders
 
   "VideoPlayer": {
 

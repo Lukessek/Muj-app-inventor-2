@@ -47,6 +47,7 @@ import com.google.appinventor.shared.rpc.project.youngandroid.YoungAndroidFormNo
 import com.google.appinventor.shared.youngandroid.YoungAndroidSourceAnalyzer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.gwt.core.client.Callback;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.DockPanel;
@@ -138,7 +139,9 @@ public final class YaFormEditor extends SimpleEditor implements FormChangeListen
 
     // Create UI elements for the designer panels.
     nonVisibleComponentsPanel = new SimpleNonVisibleComponentsPanel();
+    addComponentDatabaseChangeListener(nonVisibleComponentsPanel);
     visibleComponentsPanel = new SimpleVisibleComponentsPanel(this, nonVisibleComponentsPanel);
+    addComponentDatabaseChangeListener(visibleComponentsPanel);
     DockPanel componentsPanel = new DockPanel();
     componentsPanel.setHorizontalAlignment(DockPanel.ALIGN_CENTER);
     componentsPanel.add(visibleComponentsPanel, DockPanel.NORTH);
@@ -565,6 +568,13 @@ public final class YaFormEditor extends SimpleEditor implements FormChangeListen
     return mockComponent;
   }
 
+  @Override
+  public void getBlocksImage(Callback callback) {
+    YaProjectEditor yaProjectEditor = (YaProjectEditor) projectEditor;
+    YaBlocksEditor blockEditor = yaProjectEditor.getBlocksFileEditor(formNode.getFormName());
+    blockEditor.getBlocksImage(callback);
+  }
+
   /*
    * Updates the the whole designer: form, palette, source structure explorer,
    * assets list, and properties panel.
@@ -719,6 +729,20 @@ public final class YaFormEditor extends SimpleEditor implements FormChangeListen
     propertiesBox.setVisible(false);
   }
 
+  /**
+   * Runs through all the Mock Components and upgrades if its corresponding Component was Upgraded
+   * @param componentTypes the Component Types that got upgraded
+   */
+  private void updateMockComponents(List<String> componentTypes) {
+    Map<String, MockComponent> componentMap = getComponents();
+    for (MockComponent mockComponent : componentMap.values()) {
+      if (componentTypes.contains(mockComponent.getType())) {
+        mockComponent.upgrade();
+        mockComponent.upgradeComplete();
+      }
+    }
+  }
+
   /*
    * Push changes to a connected phone (or emulator).
    */
@@ -746,6 +770,10 @@ public final class YaFormEditor extends SimpleEditor implements FormChangeListen
     for (ComponentDatabaseChangeListener cdbChangeListener : componentDatabaseChangeListeners) {
       cdbChangeListener.onComponentTypeAdded(componentTypes);
     }
+    //Update Mock Components
+    updateMockComponents(componentTypes);
+    //Update the Properties Panel
+    updatePropertiesPanel(form.getSelectedComponent());
   }
 
   @Override

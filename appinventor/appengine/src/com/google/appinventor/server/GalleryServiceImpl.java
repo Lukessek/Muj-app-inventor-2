@@ -35,7 +35,6 @@ import com.google.appinventor.server.storage.GalleryStorageIoInstanceHolder;
 import com.google.appinventor.shared.rpc.project.Email;
 import com.google.appinventor.shared.rpc.project.GalleryApp;
 import com.google.appinventor.shared.rpc.project.GalleryAppListResult;
-import com.google.appinventor.shared.rpc.project.GalleryAppReport;
 import com.google.appinventor.shared.rpc.project.GalleryComment;
 import com.google.appinventor.shared.rpc.project.GalleryModerationAction;
 import com.google.appinventor.shared.rpc.project.GalleryReportListResult;
@@ -59,14 +58,18 @@ public class GalleryServiceImpl extends OdeRemoteServiceServlet implements Galle
       GalleryStorageIoInstanceHolder.INSTANCE;
   // fileExporter used to get the source code from project being published
   private final FileExporter fileExporter = new FileExporterImpl();
+  private final GallerySettings settings;
 
-  @Override
-  public GallerySettings loadGallerySettings() {
+  public GalleryServiceImpl() {
     String bucket = Flag.createFlag("gallery.bucket", "").get();
     boolean galleryEnabled = Flag.createFlag("use.gallery",false).get();
     String envirnment = SystemProperty.environment.value().toString();
     String adminEmail = Flag.createFlag("gallery.admin.email", "").get();
-    GallerySettings settings = new GallerySettings(galleryEnabled, bucket, envirnment, adminEmail);
+    settings = new GallerySettings(galleryEnabled, bucket, envirnment, adminEmail);
+  }
+
+  @Override
+  public GallerySettings loadGallerySettings() {
     return settings;
   }
 
@@ -82,7 +85,12 @@ public class GalleryServiceImpl extends OdeRemoteServiceServlet implements Galle
   public GalleryApp publishApp(long projectId, String title, String projectName, String description, String moreInfo, String credit)  throws IOException {
     final String userId = userInfoProvider.getUserId();
     GalleryApp app = galleryStorageIo.createGalleryApp(title, projectName, description, moreInfo, credit, projectId, userId);
-    storeAIA(app.getGalleryAppId(),projectId, projectName);
+    try {
+      storeAIA(app.getGalleryAppId(),projectId, projectName);
+    } catch (IOException e) {
+      deleteApp(app.getGalleryAppId());
+      throw e;
+    }
     // see if there is a new image for the app. If so, its in cloud using projectId, need to move
     // to cloud using gallery id
     setGalleryAppImage(app);
@@ -98,8 +106,8 @@ public class GalleryServiceImpl extends OdeRemoteServiceServlet implements Galle
    */
   @Override
   public void updateApp(GalleryApp app, boolean newImage) throws IOException {
-    updateAppMetadata(app);
     updateAppSource(app.getGalleryAppId(),app.getProjectId(),app.getProjectName());
+    updateAppMetadata(app);
     if (newImage)
       setGalleryAppImage(app);
   }
@@ -490,7 +498,7 @@ public class GalleryServiceImpl extends OdeRemoteServiceServlet implements Galle
     RawFile aiaFile = null;
     byte[] aiaBytes= null;
     ProjectSourceZip zipFile = fileExporter.exportProjectSourceZip(userId,
-      projectId, true, false, aiaName, false, false, true);
+      projectId, true, false, aiaName, false, false, false, true);
     aiaFile = zipFile.getRawFile();
     aiaBytes = aiaFile.getContent();
     LOG.log(Level.INFO, "aiaFile numBytes:"+aiaBytes.length);

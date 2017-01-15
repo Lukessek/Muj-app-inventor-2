@@ -54,6 +54,7 @@ import com.google.appinventor.shared.storage.StorageUtil;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 
@@ -84,6 +85,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -127,6 +129,7 @@ public class ObjectifyStorageIo implements  StorageIo {
   private final boolean useGcs = Flag.createFlag("use.gcs", true).get();
 
   private final boolean conversionEnabled = false; // We are converting GCS <=> Blobstore
+  private static final boolean DEBUG = Flag.createFlag("appinventor.debugging", false).get();
 
   // Use this class to define the work of a job that can be
   // retried. The "datastore" argument to run() is the Objectify
@@ -215,12 +218,14 @@ public class ObjectifyStorageIo implements  StorageIo {
     RetryParams retryParams = new RetryParams.Builder().initialRetryDelayMillis(100)
       .retryMaxAttempts(10)
       .totalRetryPeriodMillis(10000).build();
-    LOG.log(Level.INFO, "RetryParams: getInitialRetryDelayMillis() = " + retryParams.getInitialRetryDelayMillis());
-    LOG.log(Level.INFO, "RetryParams: getRequestTimeoutMillis() = " + retryParams.getRequestTimeoutMillis());
-    LOG.log(Level.INFO, "RetryParams: getRetryDelayBackoffFactor() = " + retryParams.getRetryDelayBackoffFactor());
-    LOG.log(Level.INFO, "RetryParams: getRetryMaxAttempts() = " + retryParams.getRetryMaxAttempts());
-    LOG.log(Level.INFO, "RetryParams: getRetryMinAttempts() = " + retryParams.getRetryMinAttempts());
-    LOG.log(Level.INFO, "RetryParams: getTotalRetryPeriodMillis() = " + retryParams.getTotalRetryPeriodMillis());
+    if (DEBUG) {
+      LOG.log(Level.INFO, "RetryParams: getInitialRetryDelayMillis() = " + retryParams.getInitialRetryDelayMillis());
+      LOG.log(Level.INFO, "RetryParams: getRequestTimeoutMillis() = " + retryParams.getRequestTimeoutMillis());
+      LOG.log(Level.INFO, "RetryParams: getRetryDelayBackoffFactor() = " + retryParams.getRetryDelayBackoffFactor());
+      LOG.log(Level.INFO, "RetryParams: getRetryMaxAttempts() = " + retryParams.getRetryMaxAttempts());
+      LOG.log(Level.INFO, "RetryParams: getRetryMinAttempts() = " + retryParams.getRetryMinAttempts());
+      LOG.log(Level.INFO, "RetryParams: getTotalRetryPeriodMillis() = " + retryParams.getTotalRetryPeriodMillis());
+    }
     gcsService = GcsServiceFactory.createGcsService(retryParams);
     memcache.setErrorHandler(ErrorHandlers.getConsistentLogAndContinue(Level.INFO));
     initMotd();
@@ -944,6 +949,41 @@ public class ObjectifyStorageIo implements  StorageIo {
   }
 
   @Override
+  public List<UserProject> getUserProjects(final String userId, final List<Long> projectIds) {
+    final Result<Map<Long,ProjectData>> projectDatas = new Result<Map<Long,ProjectData>>();
+    try {
+      runJobWithRetries(new JobRetryHelper() {
+        @Override
+        public void run(Objectify datastore) {
+          Map<Long,ProjectData> pd = datastore.get(ProjectData.class, projectIds);
+          if (pd != null) {
+            projectDatas.t = pd;
+          } else {
+            projectDatas.t = null;
+          }
+        }
+      }, false);
+    } catch (ObjectifyException e) {
+      throw CrashReport.createAndLogError(LOG, null,
+        collectUserErrorInfo(userId), e);
+    }
+    if (projectDatas.t == null) {
+      throw new RuntimeException("getUserProjects wants to return null, userId = " + userId);
+      // Note we directly throw a RuntimeException instead of calling CrashReport
+      // because we don't have an explicitly caught exception to hand it.
+    } else {
+      List<UserProject> uProjects = Lists.newArrayListWithExpectedSize(projectDatas.t.size());
+      for (ProjectData projectData : projectDatas.t.values()) {
+        uProjects.add(new UserProject(projectData.id, projectData.name,
+            projectData.type, projectData.dateCreated,
+            projectData.dateModified, projectData.galleryId,
+            projectData.attributionId));
+      }
+      return uProjects;
+    }
+  }
+
+  @Override
   public String getProjectName(final String userId, final long projectId) {
     final Result<String> projectName = new Result<String>();
     try {
@@ -1504,12 +1544,14 @@ public class ObjectifyStorageIo implements  StorageIo {
           if (fd == null) {
             fd = datastore.find(projectFileKey(projectKey(projectId), fileName));
           } else {
-            LOG.log(Level.INFO, "Fetched " + key.getString() + " from memcache.");
+            if (DEBUG) {
+              LOG.log(Level.INFO, "Fetched " + key.getString() + " from memcache.");
+            }
           }
 
           // <Screen>.yail files are missing when user converts AI1 project to AI2
           // instead of blowing up, just create a <Screen>.yail file
-          if (fd == null && fileName.endsWith(".yail")){
+          if (fd == null && (fileName.endsWith(".yail") || (fileName.endsWith(".png")))){
             fd = createProjectFile(datastore, projectKey(projectId), FileData.RoleEnum.SOURCE, fileName);
             fd.userId = userId;
           }
@@ -1784,7 +1826,9 @@ public class ObjectifyStorageIo implements  StorageIo {
                 while (bytesRead < fileSize) {
                   bytesRead += readChannel.read(resultBuffer);
                   if (bytesRead < fileSize) {
-                    LOG.log(Level.INFO, "readChannel: bytesRead = " + bytesRead + " fileSize = " + fileSize);
+                    if (DEBUG) {
+                      LOG.log(Level.INFO, "readChannel: bytesRead = " + bytesRead + " fileSize = " + fileSize);
+                    }
                   }
                 }
                 recovered = true;
@@ -1900,6 +1944,8 @@ public class ObjectifyStorageIo implements  StorageIo {
    * @param includeProjectHistory  whether or not to include the project history
    * @param includeAndroidKeystore  whether or not to include the Android keystore
    * @param zipName  the name of the zip file, if a specific one is desired
+   * @param includeYail include any yail files in the project
+   * @param includeScreenShots include any screen shots stored with the project
    * @param fatalError Signal a fatal error if a file is not found
    * @param forGallery flag to indicate we are exporting for the gallery
    * @return  project with the content as requested by params.
@@ -1910,6 +1956,7 @@ public class ObjectifyStorageIo implements  StorageIo {
     final boolean includeAndroidKeystore,
     @Nullable String zipName,
     final boolean includeYail,
+    final boolean includeScreenShots,
     final boolean forGallery,
     final boolean fatalError) throws IOException {
     validateGCS();
@@ -1944,6 +1991,10 @@ public class ObjectifyStorageIo implements  StorageIo {
             if (fd.role.equals(FileData.RoleEnum.SOURCE)) {
               if (fileName.equals(FileExporter.REMIX_INFORMATION_FILE_PATH)) {
                 // Skip legacy remix history files that were previous stored with the project
+                continue;
+              }
+              if (fileName.startsWith("screenshots") && !includeScreenShots) {
+                // Only include screenshots if asked...
                 continue;
               }
               if (fileName.endsWith(".yail") && !includeYail) {
@@ -2007,7 +2058,9 @@ public class ObjectifyStorageIo implements  StorageIo {
                   while (bytesRead < fileSize) {
                     bytesRead += readChannel.read(resultBuffer);
                     if (bytesRead < fileSize) {
-                      LOG.log(Level.INFO, "readChannel: bytesRead = " + bytesRead + " fileSize = " + fileSize);
+                      if (DEBUG) {
+                        LOG.log(Level.INFO, "readChannel: bytesRead = " + bytesRead + " fileSize = " + fileSize);
+                      }
                     }
                   }
                   recovered = true;

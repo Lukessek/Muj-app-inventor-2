@@ -119,6 +119,7 @@ public final class YoungAndroidProjectService extends CommonProjectService {
   // host[:port] to tell build server app host url
   private static final Flag<String> appengineHost =
       Flag.createFlag("appengine.host", "");
+  private static final boolean DEBUG = Flag.createFlag("appinventor.debugging", false).get();
 
   public YoungAndroidProjectService(StorageIo storageIo) {
     super(YoungAndroidProjectNode.YOUNG_ANDROID_PROJECT_TYPE, storageIo);
@@ -573,7 +574,7 @@ public final class YoungAndroidProjectService extends CommonProjectService {
       FileExporter fileExporter = new FileExporterImpl();
       zipFile = fileExporter.exportProjectSourceZip(userId, projectId, false,
           /* includeAndroidKeystore */ true,
-        projectName + ".aia", true, true, false);
+        projectName + ".aia", true, false, true, false);
       bufferedOutputStream.write(zipFile.getContent());
       bufferedOutputStream.flush();
       bufferedOutputStream.close();
@@ -777,7 +778,9 @@ public final class YoungAndroidProjectService extends CommonProjectService {
           try {
             String content = readContent(connection.getInputStream());
             if (content != null && !content.isEmpty()) {
-              LOG.info("The current progress is " + content + "%.");
+              if (DEBUG) {
+                LOG.info("The current progress is " + content + "%.");
+              }
               currentProgress = Integer.parseInt(content);
             }
           } catch (IOException e) {
